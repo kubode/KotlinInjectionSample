@@ -15,10 +15,12 @@ public class MyApplication : Application(), HasObjectGraph {
     override fun onCreate() {
         super.onCreate()
         val s = System.nanoTime()
-        val objectGraph = ObjectGraph()
-        objectGraph.add(String::class, null, ObjectGraph.Type.NORMAL, { "normal(${Math.random()})" })
-        objectGraph.add(Int::class, "named1", ObjectGraph.Type.SINGLETON, { 1 })
-        objectGraph.add(Int::class, "named2", ObjectGraph.Type.SINGLETON, { 2 })
+        val parent = ObjectGraph()
+        parent.add(String::class, null, ObjectGraph.Type.NORMAL, { "normal(${Math.random()})" })
+        parent.add(Int::class, "named1", ObjectGraph.Type.SINGLETON, { 1 })
+        parent.add(Int::class, "named2", ObjectGraph.Type.SINGLETON, { 2 })
+        val objectGraph = ObjectGraph(parent)
+        objectGraph.add(Int::class, "named2", ObjectGraph.Type.SINGLETON, { 22222 })
         objectGraph.add(Double::class, null, ObjectGraph.Type.SINGLETON, { Math.random() })
         this.objectGraph = objectGraph
 
