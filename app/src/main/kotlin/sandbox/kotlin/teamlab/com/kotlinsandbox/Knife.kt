@@ -9,7 +9,6 @@ import java.util.*
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
-import android.support.v4.app.Fragment as SupportFragment
 
 public interface HasObjectGraph {
     var objectGraph: ObjectGraph
@@ -82,7 +81,6 @@ public fun Context.findObjectGraph(): ObjectGraph {
 private val Application.objectGraph: ObjectGraph by Lazy { it.findObjectGraph() }
 private val Activity.objectGraph: ObjectGraph by Lazy { it.application.findObjectGraph() }
 private val Fragment.objectGraph: ObjectGraph by Lazy { it.activity.findObjectGraph() }
-private val SupportFragment.objectGraph: ObjectGraph by Lazy { it.activity.findObjectGraph() }
 private val View.objectGraph: ObjectGraph by Lazy { it.context.findObjectGraph() }
 
 public fun <V : Any> Application.inject(clazz: KClass<V>, name: String? = null)
@@ -94,21 +92,18 @@ public fun <V : Any> Activity.inject(clazz: KClass<V>, name: String? = null)
 public fun <V : Any> Fragment.inject(clazz: KClass<V>, name: String? = null)
         = lazy { objectGraph.get(clazz, name) }
 
-public fun <V : Any> SupportFragment.inject(clazz: KClass<V>, name: String? = null)
-        = lazy { objectGraph.get(clazz, name) }
-
 public fun <V : Any> View.inject(clazz: KClass<V>, name: String? = null)
         = lazy { objectGraph.get(clazz, name) }
 
-// internal lazy
-private class Lazy<T, V>(private val initializer: (T) -> V) : ReadOnlyProperty<T, V> {
-    private object NO
+// Like Kotlin's lazy delegate but the initializer gets the target and metadata passed to it
+internal class Lazy<T, V>(private val initializer: (T) -> V) : ReadOnlyProperty<T, V> {
+    private object EMPTY
 
     @Suppress("UNCHECKED_CAST")
-    private var value: V = NO as V
+    private var value: V = EMPTY as V
 
     override fun getValue(thisRef: T, property: KProperty<*>): V {
-        if (value == NO) {
+        if (value == EMPTY) {
             value = initializer(thisRef)
         }
         return value
