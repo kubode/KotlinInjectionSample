@@ -18,18 +18,18 @@ public interface HasObjectGraph {
 private class NotFoundException(detailMessage: String?) : RuntimeException(detailMessage)
 
 public class ObjectGraph(private val parent: ObjectGraph? = null) {
-    private val graph: MutableMap<Class<*>, MutableMap<String?, Wrapper<Any>>> = HashMap()
+    private val graph: MutableMap<Class<*>, MutableMap<String?, Wrapper<*>>> = HashMap()
 
-    private fun <V : Any> add(clazz: KClass<V>, name: String? = null, type: Type, creator: () -> V) {
-        graph.getOrPut(clazz.java, { HashMap() }).put(name, type.createWrapper(creator))
+    private fun <V : Any> add(clazz: KClass<V>, name: String? = null, type: Type, initializer: () -> V) {
+        graph.getOrPut(clazz.java, { HashMap() }).put(name, type.wrap(initializer))
     }
 
-    public fun <V : Any> provide(clazz: KClass<V>, creator: () -> V, name: String? = null) {
-        add(clazz, name, Type.NORMAL, creator)
+    public fun <V : Any> provide(clazz: KClass<V>, initializer: () -> V, name: String? = null) {
+        add(clazz, name, Type.NORMAL, initializer)
     }
 
-    public fun <V : Any> provideSingleton(clazz: KClass<V>, creator: () -> V, name: String? = null) {
-        add(clazz, name, Type.SINGLETON, creator)
+    public fun <V : Any> provideSingleton(clazz: KClass<V>, initializer: () -> V, name: String? = null) {
+        add(clazz, name, Type.SINGLETON, initializer)
     }
 
     public fun <V : Any> get(clazz: KClass<V>, name: String? = null): V {
@@ -39,7 +39,7 @@ public class ObjectGraph(private val parent: ObjectGraph? = null) {
                 ?: throw NotFoundException("${clazz.java}(${name ?: "No name"}) is not found.")
     }
 
-    private enum class Type(val createWrapper: (() -> Any) -> Wrapper<Any>) {
+    private enum class Type(internal val wrap: (() -> Any) -> Wrapper<*>) {
         NORMAL({ NormalWrapper(it) }), SINGLETON({ SingletonWrapper(it) })
     }
 
