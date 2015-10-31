@@ -68,7 +68,7 @@ public class ObjectGraph(private val parent: ObjectGraph? = null) {
     }
 }
 
-private fun Context.findObjectGraph(): ObjectGraph {
+public fun Context.findObjectGraph(): ObjectGraph {
     if (this is HasObjectGraph) {
         return this.objectGraph
     }
@@ -80,11 +80,8 @@ private fun Context.findObjectGraph(): ObjectGraph {
 }
 
 private val Application.objectGraph: ObjectGraph by Lazy { it.findObjectGraph() }
-
 private val Activity.objectGraph: ObjectGraph by Lazy { it.application.findObjectGraph() }
-
 private val Fragment.objectGraph: ObjectGraph by Lazy { it.activity.findObjectGraph() }
-
 private val SupportFragment.objectGraph: ObjectGraph by Lazy { it.activity.findObjectGraph() }
 private val View.objectGraph: ObjectGraph by Lazy { it.context.findObjectGraph() }
 

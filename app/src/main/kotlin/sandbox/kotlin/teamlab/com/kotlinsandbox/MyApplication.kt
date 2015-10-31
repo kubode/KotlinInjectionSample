@@ -15,7 +15,10 @@ public class MyApplication : Application(), HasObjectGraph {
     val singletonCharSeq: CharSequence by inject(CharSequence::class)
     override fun onCreate() {
         super.onCreate()
-        val s = System.nanoTime()
+
+        val timer = { System.currentTimeMillis() }
+        val s = timer()
+
         val parent = ObjectGraph()
         parent.provide(String::class, { "normal(${Math.random()})" })
         parent.provideSingleton(Int::class, { 1 }, "named1")
@@ -35,7 +38,7 @@ public class MyApplication : Application(), HasObjectGraph {
         Log.v("App", "$singletonDouble1")
         Log.v("App", "$singletonDouble2")
         Log.v("App", "$singletonCharSeq")
-        Log.v("App", "${System.nanoTime() - s}")
+        Log.v("App", "${timer() - s}")
         Log.v("App", "$objectGraph")
     }
 }
