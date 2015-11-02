@@ -10,12 +10,20 @@ import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 
+/**
+ * Implements this interface if has [ObjectGraph].
+ */
 public interface HasObjectGraph {
     var objectGraph: ObjectGraph
 }
 
 private class NotFoundException(detailMessage: String?) : RuntimeException(detailMessage)
 
+/**
+ * Inheritable object graph.
+ *
+ * @constructor Creates object graph that inherited [parent].
+ */
 public class ObjectGraph(private val parent: ObjectGraph? = null) {
     private val graph: MutableMap<Class<*>, MutableMap<String?, Wrapper<*>>> = HashMap()
 
