@@ -62,6 +62,7 @@ private class Provider<V : Any>(internal val type: Type,
  *     init {
  *         provide(Double::class, { Math.random() })
  *         provideSingleton(Int::class, { 1 }, "named")
+ *         provideSingleton(String::class, { "Dependency: ${it.get(Int::class}" })
  *     }
  * }
  * ```
