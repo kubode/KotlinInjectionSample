@@ -14,10 +14,80 @@ import kotlin.reflect.KProperty
  * Implements this interface if has [ObjectGraph].
  */
 public interface HasObjectGraph {
-    var objectGraph: ObjectGraph
+    /**
+     * Define [ObjectGraph].
+     */
+    val objectGraph: ObjectGraph
 }
 
-private class NotFoundException(detailMessage: String?) : RuntimeException(detailMessage)
+private interface Wrapper<V> {
+    val value: V
+}
+
+private class NormalWrapper<V>(private val objectGraph: ObjectGraph,
+                               private val initializer: (ObjectGraph) -> V) : Wrapper<V> {
+    override val value: V
+        get() = initializer(objectGraph)
+
+    override fun toString(): String {
+        return "$value"
+    }
+}
+
+private class SingletonWrapper<V>(private val objectGraph: ObjectGraph,
+                                  private val initializer: (ObjectGraph) -> V) : Wrapper<V> {
+    override val value: V by lazy { initializer(objectGraph) }
+    override fun toString(): String {
+        return "$value(Singleton)"
+    }
+}
+
+private enum class Type(private val wrapper: (ObjectGraph, (ObjectGraph) -> Any) -> Wrapper<*>) {
+    NORMAL({ objectGraph, initializer -> NormalWrapper(objectGraph, initializer) }),
+    SINGLETON({ objectGraph, initializer -> SingletonWrapper(objectGraph, initializer) });
+
+    internal fun wrap(objectGraph: ObjectGraph, initializer: (ObjectGraph) -> Any): Wrapper<*> {
+        return wrapper(objectGraph, initializer)
+    }
+}
+
+private class Provider<V : Any>(internal val type: Type,
+                                internal val initializer: (ObjectGraph) -> V)
+
+/**
+ * Define module by extend this class like below.
+ *
+ * ```
+ * class MyModule : Module() {
+ *     init {
+ *         provide(Double::class, { Math.random() })
+ *         provideSingleton(Int::class, { 1 }, "named")
+ *     }
+ * }
+ * ```
+ */
+public abstract class Module {
+    @Suppress("EXPOSED_PROPERTY_TYPE")
+    internal val providers: MutableMap<Class<*>, MutableMap<String?, Provider<*>>> = HashMap()
+
+    private fun <V : Any> add(clazz: KClass<V>, name: String? = null, provider: Provider<*>) {
+        providers.getOrPut(clazz.java, { HashMap() }).put(name, provider)
+    }
+
+    /**
+     * Provide object.
+     */
+    protected fun <V : Any> provide(clazz: KClass<V>, initializer: (ObjectGraph) -> V, name: String? = null) {
+        add(clazz, name, Provider(Type.NORMAL, initializer))
+    }
+
+    /**
+     * Provide object as singleton.
+     */
+    protected fun <V : Any> provideSingleton(clazz: KClass<V>, initializer: (ObjectGraph) -> V, name: String? = null) {
+        add(clazz, name, Provider(Type.SINGLETON, initializer))
+    }
+}
 
 /**
  * Inheritable object graph.
@@ -27,47 +97,29 @@ private class NotFoundException(detailMessage: String?) : RuntimeException(detai
 public class ObjectGraph(private val parent: ObjectGraph? = null) {
     private val graph: MutableMap<Class<*>, MutableMap<String?, Wrapper<*>>> = HashMap()
 
-    private fun <V : Any> add(clazz: KClass<V>, name: String? = null, type: Type, initializer: () -> V) {
-        graph.getOrPut(clazz.java, { HashMap() }).put(name, type.wrap(initializer))
+    /**
+     * Add new [Module] to this.
+     */
+    public fun add(module: Module): ObjectGraph {
+        module.providers.forEach {
+            graph.getOrPut(it.key, { HashMap() }).putAll(it.value.mapValues {
+                it.value.type.wrap(this, it.value.initializer)
+            })
+        }
+        return this
     }
 
-    public fun <V : Any> provide(clazz: KClass<V>, initializer: () -> V, name: String? = null) {
-        add(clazz, name, Type.NORMAL, initializer)
-    }
-
-    public fun <V : Any> provideSingleton(clazz: KClass<V>, initializer: () -> V, name: String? = null) {
-        add(clazz, name, Type.SINGLETON, initializer)
-    }
-
+    /**
+     * Get object from this.
+     * If object not found then throw exception.
+     *
+     * @throws RuntimeException When object is not found.
+     */
     public fun <V : Any> get(clazz: KClass<V>, name: String? = null): V {
         @Suppress("UNCHECKED_CAST")
         return graph[clazz.java]?.get(name)?.value as V?
                 ?: parent?.get(clazz, name)
-                ?: throw NotFoundException("${clazz.java}(${name ?: "No name"}) is not found.")
-    }
-
-    private enum class Type(internal val wrap: (() -> Any) -> Wrapper<*>) {
-        NORMAL({ NormalWrapper(it) }), SINGLETON({ SingletonWrapper(it) })
-    }
-
-    private interface Wrapper<V> {
-        val value: V
-    }
-
-    private class NormalWrapper<V>(private val creator: () -> V) : Wrapper<V> {
-        override val value: V
-            get() = creator()
-
-        override fun toString(): String {
-            return "$value"
-        }
-    }
-
-    private class SingletonWrapper<V>(creator: () -> V) : Wrapper<V> {
-        override val value: V by lazy { creator() }
-        override fun toString(): String {
-            return "$value(Singleton)"
-        }
+                ?: throw RuntimeException("${clazz.java}(${name ?: "No name"}) is not found.")
     }
 
     override fun toString(): String {
@@ -75,6 +127,15 @@ public class ObjectGraph(private val parent: ObjectGraph? = null) {
     }
 }
 
+/**
+ * Find [ObjectGraph].
+ * If this [Context] implements [HasObjectGraph] then returns `this.objectGraph`.
+ * If applicationContext implements [HasObjectGraph] then returns `applicationContext.objectGraph`.
+ * Otherwise throws exception.
+ *
+ * @return Founded [ObjectGraph].
+ * @throws RuntimeException When [ObjectGraph] is not found.
+ */
 public fun Context.findObjectGraph(): ObjectGraph {
     if (this is HasObjectGraph) {
         return this.objectGraph
@@ -83,7 +144,7 @@ public fun Context.findObjectGraph(): ObjectGraph {
     if (application is HasObjectGraph) {
         return application.objectGraph
     }
-    throw  NotFoundException("${ObjectGraph::class.java.simpleName} is not found in $this.")
+    throw  RuntimeException("${ObjectGraph::class.java.simpleName} is not found in $this.")
 }
 
 private val Application.objectGraph: ObjectGraph by Lazy { it.findObjectGraph() }

@@ -19,15 +19,7 @@ public class MyApplication : Application(), HasObjectGraph {
         val timer = { System.currentTimeMillis() }
         val s = timer()
 
-        val parent = ObjectGraph()
-        parent.provide(String::class, { "normal(${Math.random()})" })
-        parent.provideSingleton(Int::class, { 1 }, "named1")
-        parent.provideSingleton(Int::class, { 2 }, "named2")
-        val objectGraph = ObjectGraph(parent)
-        objectGraph.provideSingleton(Int::class, { 22222 }, "named2")
-        objectGraph.provideSingleton(Double::class, { Math.random() })
-        objectGraph.provideSingleton(CharSequence::class, { "${objectGraph.get(String::class)}aaa" })
-        this.objectGraph = objectGraph
+        objectGraph = ObjectGraph(ObjectGraph().add(Module1())).add(Module2())
 
         Log.v("App", "$normalString1")
         Log.v("App", "$normalString1")
@@ -40,5 +32,23 @@ public class MyApplication : Application(), HasObjectGraph {
         Log.v("App", "$singletonCharSeq")
         Log.v("App", "${timer() - s}")
         Log.v("App", "$objectGraph")
+    }
+}
+
+class Module1 : Module() {
+    init {
+        provide(String::class, { "normal(${Math.random()})" })
+        provideSingleton(Int::class, { 1 }, "named1")
+        provideSingleton(Int::class, { 2 }, "named2")
+        provideSingleton(Double::class, { Math.random() })
+        provideSingleton(CharSequence::class, { "${it.get(String::class)}aaa" })
+    }
+}
+
+class Module2 : Module() {
+    init {
+        provideSingleton(Int::class, { 22222 }, "named2")
+        provideSingleton(Double::class, { Math.random() })
+        provideSingleton(CharSequence::class, { "${it.get(String::class)}aaa" })
     }
 }
