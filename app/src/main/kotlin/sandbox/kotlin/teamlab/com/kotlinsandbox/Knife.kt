@@ -165,7 +165,7 @@ public fun <V : Any> Fragment.inject(clazz: KClass<V>, name: String? = null)
 public fun <V : Any> View.inject(clazz: KClass<V>, name: String? = null)
         = lazy { objectGraph.get(clazz, name) }
 
-// Like Kotlin's lazy delegate but the initializer gets the target and metadata passed to it
+// Like kotlin lazy delegate but the initializer gets the target and metadata passed to it
 internal class Lazy<T, V>(private val initializer: (T) -> V) : ReadOnlyProperty<T, V> {
     private object EMPTY
 
