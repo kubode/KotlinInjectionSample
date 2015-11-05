@@ -9,7 +9,8 @@ import rx.subscriptions.CompositeSubscription
 
 public class MainActivity : AppCompatActivity() {
 
-    private val test: String by inject(String::class)
+    private val string: String by inject(String::class)
+    private val charSequence: CharSequence by inject(CharSequence::class)
 
     private val text: TextView by bindView(R.id.text)
 
@@ -18,11 +19,15 @@ public class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        text.text = test
-        text.text = test
-        text.text = test
+        text.text = string
         subscriber = CompositeSubscription(
-                text.clicks().subscribe { text.text = test })
+                text.clicks().subscribe { text.text = charSequence })
+
+        savedInstanceState ?: run {
+            fragmentManager.beginTransaction()
+                    .add(R.id.container, MyFragment().apply { this.x = 1 })
+                    .commit()
+        }
     }
 
     override fun onDestroy() {
