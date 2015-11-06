@@ -23,7 +23,7 @@ public class MainActivity : AppCompatActivity() {
         subscriber = CompositeSubscription(
                 text.clicks().subscribe { text.text = charSequence })
 
-        savedInstanceState ?: run {
+        savedInstanceState ?: run { // if (savedInstanceState == null) {
             fragmentManager.beginTransaction()
                     .add(R.id.container, MyFragment().apply { this.x = 1 })
                     .commit()
